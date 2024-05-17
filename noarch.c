@@ -16,7 +16,8 @@
 #include <errno.h>
 #include <dlfcn.h>
 
-#include "libretro-common/include/libretro.h"
+#include "libretro.h"
+#include "vfs/vfs_implementation.h"
 
 int width = 0;
 int height = 0;
@@ -142,6 +143,45 @@ static bool core_environment(unsigned cmd, void * data) {
         RETRO_LOG_DEBUG,
         "[noarch] RETRO_ENVIRONMENT_SET_MESSAGE: %s\n",
         message->msg);
+      break;
+    }
+
+    case RETRO_ENVIRONMENT_GET_VFS_INTERFACE: {
+      struct retro_vfs_interface_info* info = (struct retro_vfs_interface_info*)data;
+      const uint32_t supported_vfs_version = 3;
+      if (info->required_interface_version > supported_vfs_version) {
+        core_log(RETRO_LOG_ERROR, "[noarch] RETRO_ENVIRONMENT_GET_VFS_INTERFACE - unsupported VFS version");
+        return false;
+      }
+
+      static struct retro_vfs_interface vfs_iface =
+      {
+        /* VFS API v1 */
+        retro_vfs_file_get_path_impl,
+        retro_vfs_file_open_impl,
+        retro_vfs_file_close_impl,
+        retro_vfs_file_size_impl,
+        retro_vfs_file_tell_impl,
+        retro_vfs_file_seek_impl,
+        retro_vfs_file_read_impl,
+        retro_vfs_file_write_impl,
+        retro_vfs_file_flush_impl,
+        retro_vfs_file_remove_impl,
+        retro_vfs_file_rename_impl,
+        /* VFS API v2 */
+        retro_vfs_file_truncate_impl,
+        /* VFS API v3 */
+        retro_vfs_stat_impl,
+        retro_vfs_mkdir_impl,
+        retro_vfs_opendir_impl,
+        retro_vfs_readdir_impl,
+        retro_vfs_dirent_get_name_impl,
+        retro_vfs_dirent_is_dir_impl,
+        retro_vfs_closedir_impl
+      };
+
+      core_log(RETRO_LOG_DEBUG, "[noarch] RETRO_ENVIRONMENT_GET_VFS_INTERFACE");
+      info->iface = &vfs_iface;
       break;
     }
 
